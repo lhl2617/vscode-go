@@ -43,7 +43,8 @@
     "lint": "gts lint src test",
     "fix-lint": "gts fix src test",
     "unit-test": "npm run test-compile && node ./node_modules/mocha/bin/_mocha -u tdd --timeout 5000 --colors ./out/test/unit",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "build-gopls-wasm": "cd ./tools/tools/gopls && cross-env GOOS=js GOARCH=wasm go build -o ../../../out/gopls.wasm"
   },
   "extensionDependencies": [],
   "dependencies": {
