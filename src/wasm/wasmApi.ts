@@ -1,6 +1,7 @@
 import './wasm_exec.js';
-import vscode = require('vscode');
 import path = require('path');
+import fs = require('fs');
+import { exit } from 'process';
 
 declare const Go: new () => {
 	importObject: WebAssembly.Imports;
@@ -9,11 +10,19 @@ declare const Go: new () => {
 
 const go = new Go();
 
-export async function loadWASM(ctx: vscode.ExtensionContext) {
-	const { extensionPath } = ctx;
+export async function loadWASM(extensionPath: string) {
 	// TODO:- fix this hack, out is .vscodeignore'd
-	const { instance } = await WebAssembly.instantiateStreaming(
-		fetch(path.join(extensionPath, 'out', 'gopls.wasm'), go.importObject)
-	);
+	const wasmPath = path.join(extensionPath, 'out', 'gopls.wasm');
+	const wasm = await WebAssembly.compile(fs.readFileSync(wasmPath));
+	const instance = await WebAssembly.instantiate(wasm, go.importObject);
 	await go.run(instance);
 }
+
+(async () => {
+	try {
+		await loadWASM('../..');
+	} catch (err) {
+		console.error(err);
+		exit(1);
+	}
+})();
