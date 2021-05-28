@@ -99,7 +99,7 @@ class Env {
 		});
 		const cfg: BuildLanguageClientOption = buildLanguageServerConfig(goConfig);
 		cfg.outputChannel = this.fakeOutputChannel; // inject our fake output channel.
-		this.languageClient = await buildLanguageClient(cfg);
+		this.languageClient = await buildLanguageClient(cfg, '../..');
 		this.disposables.push(this.languageClient.start());
 
 		await this.languageClient.onReady();

@@ -10,6 +10,7 @@ const config = {
 	entry: {
 		goMain: './src/goMain.ts',
 		debugAdapter: './src/debugAdapter/goDebug.ts',
+		server: './src/wasm/server.ts'
 	},
 	output: {
 		path: path.resolve(__dirname, 'dist'),

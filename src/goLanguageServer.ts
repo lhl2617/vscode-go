@@ -32,7 +32,7 @@ import {
 	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
-import { LanguageClient } from 'vscode-languageclient/node';
+import { Executable, LanguageClient, NodeModule, ServerOptions, TransportKind } from 'vscode-languageclient/node';
 import { getGoConfig, getGoplsConfig, IsInCloudIDE } from './config';
 import { extensionId } from './const';
 import { GoCodeActionProvider } from './goCodeAction';
@@ -389,7 +389,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 		// Track the latest config used to start the language server,
 		// and rebuild the language client.
 		latestConfig = config;
-		languageClient = await buildLanguageClient(buildLanguageClientOption(config));
+		languageClient = await buildLanguageClient(buildLanguageClientOption(config), ctx.extensionPath);
 		crashCount = 0;
 	}
 
@@ -453,7 +453,10 @@ function buildLanguageClientOption(cfg: LanguageServerConfig): BuildLanguageClie
 
 // buildLanguageClient returns a language client built using the given language server config.
 // The returned language client need to be started before use.
-export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promise<LanguageClient> {
+export async function buildLanguageClient(
+	cfg: BuildLanguageClientOption,
+	extensionPath: string
+): Promise<LanguageClient> {
 	const goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, getGoplsConfig(), 'gopls', undefined);
 
 	const documentSelector = [
@@ -474,14 +477,27 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 	if (isInPreviewMode()) {
 		documentSelector.push({ language: 'tmpl', scheme: 'file' }, { language: 'tmpl', scheme: 'untitled' });
 	}
+	const x: Executable = {
+		command: cfg.path,
+		args: ['-mode=stdio', ...cfg.flags],
+		options: { env: cfg.env }
+	};
+	const y: Executable = {
+		command: 'node',
+		// transport: TransportKind.stdio,
+		args: [
+			'C:/go/misc/wasm/wasm_exec.js',
+			'C:/Users/lhlee/Documents/experiments/vscode-go/out/gopls.wasm',
+			'serve',
+			'-mode=stdio',
+			...cfg.flags
+		],
+		options: { env: cfg.env }
+	};
 	const c = new LanguageClient(
 		'go', // id
 		cfg.serverName, // name e.g. gopls
-		{
-			command: cfg.path,
-			args: ['-mode=stdio', ...cfg.flags],
-			options: { env: cfg.env }
-		},
+		y,
 		{
 			initializationOptions: goplsWorkspaceConfig,
 			documentSelector,
