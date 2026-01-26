@@ -19,6 +19,18 @@ export interface FormFieldTypeString {
 	kind: 'string';
 }
 
+// FormFieldTypeDocumentURI defines an input for a file or directory URI.
+//
+// The client determines the best mechanism to collect this information from
+// the user (e.g., a graphical file picker, a text input with autocomplete, etc).
+//
+// The value returned by the client must be a valid "DocumentUri" as defined
+// in the LSP specification:
+// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#documentUri
+export interface FormFieldTypeDocumentURI {
+	kind: 'documentURI';
+}
+
 // FormFieldTypeBool defines a boolean input.
 export interface FormFieldTypeBool {
 	kind: 'bool';
@@ -56,6 +68,7 @@ export interface FormFieldTypeList {
 // FormFieldType acts as a Discriminated Union based on the 'kind' property.
 export type FormFieldType =
 	| FormFieldTypeString
+	| FormFieldTypeDocumentURI
 	| FormFieldTypeBool
 	| FormFieldTypeNumber
 	| FormFieldTypeEnum
@@ -235,6 +248,78 @@ async function promptForField(field: FormField, prevAnswer: any | undefined): Pr
 	const type = field.type;
 
 	switch (type.kind) {
+		case 'documentURI': {
+			// UX Decision: Explicitly separate "Open" and "Create" flows.
+			//
+			// We use this "Intent Menu" to bypass a limitation in the
+			// native OS Save Dialog.
+			//
+			// While vscode.window.showSaveDialog allows selecting both new
+			// and existing paths, it forces a system-level "Do you want to
+			// replace it?" warning if an existing file is selected.
+			//
+			// Since our server will NOT actually overwrite the file (it
+			// just needs the URI), this warning is a false alarm that
+			// confuses users. We cannot disable this warning in the OS, so
+			// we split the flow:
+			//
+			// - "Open Existing": Uses showOpenDialog (Clean UX, no warnings)
+			// - "Create New": Uses showSaveDialog (The "Overwrite" warning
+			// is unavoidable here, but users expect some friction when
+			// "creating" over an existing name, so it is acceptable).
+			const action = await vscode.window.showQuickPick(
+				[
+					{
+						label: '$(file) Open Existing File',
+						description: 'Select a file that already exists',
+						target: 'open'
+					},
+					{
+						label: '$(new-file) Create New File',
+						description: 'Select a destination for a new file',
+						target: 'save'
+					}
+				],
+				{
+					placeHolder: field.description || 'Select file action',
+					ignoreFocusOut: true
+				}
+			);
+
+			if (!action) {
+				return undefined; // User cancelled
+			}
+
+			let defaultUri: vscode.Uri | undefined;
+			const defaultUriString = (prevAnswer as string) || (field.default as string);
+
+			if (defaultUriString) {
+				try {
+					defaultUri = vscode.Uri.parse(defaultUriString);
+				} catch {
+					// Ignore invalid URIs
+				}
+			}
+
+			if (action.target === 'open') {
+				const uri = await vscode.window.showOpenDialog({
+					canSelectFiles: true,
+					canSelectFolders: false,
+					canSelectMany: false,
+					openLabel: 'Select',
+					defaultUri: defaultUri,
+					title: field.description || 'Select Existing File'
+				});
+				return uri && uri[0] ? uri[0].toString() : undefined;
+			} else {
+				const uri = await vscode.window.showSaveDialog({
+					defaultUri: defaultUri,
+					saveLabel: 'Select',
+					title: field.description || 'Create New File'
+				});
+				return uri ? uri.toString() : undefined;
+			}
+		}
 		case 'string':
 			return await vscode.window.showInputBox({
 				prompt: field.description,
