@@ -365,10 +365,10 @@ suite('getRequiredTools', () => {
 			name: 'include gopls when {"go.useLanguageServer": true}',
 			goConfig: new Map<string, any>([['useLanguageServer', true]]),
 			// exclude third party tool that is replaced by gopls
-			expectedTools: ['gopls', 'dlv', 'gotests', 'impl', 'goplay']
+			expectedTools: ['gopls', 'dlv', 'impl', 'goplay']
 		},
 		{
-			name: 'exclude gopls when {"go.useLanguageServer": true}',
+			name: 'exclude gopls when {"go.useLanguageServer": false}',
 			goConfig: new Map<string, any>([['useLanguageServer', false]]),
 			expectedTools: [
 				'dlv',
@@ -385,7 +385,7 @@ suite('getRequiredTools', () => {
 				['useLanguageServer', true],
 				['lintTool', 'golangci-lint']
 			]),
-			expectedTools: ['golangci-lint', 'gopls', 'dlv', 'gotests', 'impl', 'goplay']
+			expectedTools: ['golangci-lint', 'gopls', 'dlv', 'impl', 'goplay']
 		}
 	];
 

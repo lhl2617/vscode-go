@@ -47,7 +47,7 @@ const internal = new Map<string, Tool>([
 			name: 'gofumpt',
 			importPath: 'mvdan.cc/gofumpt',
 			modulePath: 'mvdan.cc/gofumpt',
-			replacedByGopls: true,
+			replacedByGopls: false,
 			isImportant: false,
 			description: 'Formatter',
 			defaultVersion: 'v0.7.0'
@@ -59,7 +59,7 @@ const internal = new Map<string, Tool>([
 			name: 'goimports',
 			importPath: 'golang.org/x/tools/cmd/goimports',
 			modulePath: 'golang.org/x/tools',
-			replacedByGopls: true,
+			replacedByGopls: false,
 			isImportant: true,
 			description: 'Formatter'
 		}
@@ -70,7 +70,7 @@ const internal = new Map<string, Tool>([
 			name: 'gotests',
 			importPath: 'github.com/cweill/gotests/gotests',
 			modulePath: 'github.com/cweill/gotests',
-			replacedByGopls: false,
+			replacedByGopls: true,
 			isImportant: false,
 			description: 'Generate unit tests',
 			minimumGoVersion: semver.coerce('1.9'),

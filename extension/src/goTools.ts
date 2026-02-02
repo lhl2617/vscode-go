@@ -18,6 +18,18 @@ export interface Tool {
 	importPath: string;
 	modulePath: string;
 	isImportant: boolean;
+
+	/**
+	 * Indicates whether this tool is replaced by gopls.
+	 *
+	 * This should be set to `true` ONLY for tools that are not directly
+	 * exposed to the user as a configuration option.
+	 *
+	 * If a tool can be explicitly selected by the user through a setting (e.g.
+	 * "go.formatTool"), this field must be `false`. In those cases, gopls is
+	 * treated as an alternative choice, not a replacement, and the extension
+	 * must honor the user's specific selection.
+	 */
 	replacedByGopls?: boolean;
 	description: string;
 

@@ -73,7 +73,7 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 	const goVersion = await getGoVersion();
 	let allTools = getRequiredTools(getGoConfig());
 
-	// exclude tools replaced by alternateTools.
+	// Exclude tools replaced by alternateTools.
 	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools') ?? {};
 	allTools = allTools.filter((tool) => {
 		return !alternateTools[tool.name];
