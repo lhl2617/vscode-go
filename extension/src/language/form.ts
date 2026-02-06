@@ -210,9 +210,18 @@ export async function ResolveCommand(
 
 /**
  * Iterates through the provided form fields and prompts the user for input
- * using VS Code's native UI (InputBox or QuickPick).
+ * using VS Code's native UI (e.g. InputBox, QuickPick...).
+ *
+ * Implementation Note:
+ * While multiple async calls could start this function simultaneously, a mutex
+ * is not needed. VS Code automatically cancels any active input box when a new
+ * one is requested. Because this function treats an 'undefined' result as a
+ * signal to terminate the entire flow, any previous sessions are effectively
+ * dropped, ensuring only the latest interactive refactoring proceeds.
+ *
  * * @param formFields The fields to collect answers for.
- * @returns An array of answers matching the order of fields, or undefined if the user cancelled the process.
+ * @returns An array of answers matching the order of fields, or undefined if
+ * the user cancelled the process.
  */
 export async function CollectAnswers(
 	formFields: FormField[] | undefined,
@@ -229,8 +238,11 @@ export async function CollectAnswers(
 		const previousAnswer = formAnswers && i < formAnswers.length ? formAnswers[i] : undefined;
 		const answer = await promptForField(field, previousAnswer);
 
-		// If the user presses Escape or cancels an input box, the result is undefined.
-		// In a form wizard, cancelling one usually means cancelling the whole flow.
+		// An 'undefined' result occurs if the user manually cancels (e.g.,
+		// "Escape" or cancel file picker) or if a new refactoring request is
+		// triggered, which automatically interrupts and cancels the current
+		// active input box.
+		// In both cases, we stop the sequence and drop the entire flow.
 		if (answer === undefined) {
 			return undefined;
 		}
