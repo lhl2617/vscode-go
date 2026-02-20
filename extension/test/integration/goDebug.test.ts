@@ -2034,7 +2034,10 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			dapTraced = true;
 
 			// Log the output for easier test debugging.
-			config['logOutput'] = isDlvDap ? 'dap,debugger' : 'rpc,debugger';
+			//
+			// Disable "rpc" logging in "legacy" mode to prevent vscode-go test
+			// timeouts caused by oversized stacktrace outputs.
+			config['logOutput'] = isDlvDap ? 'dap,debugger' : 'debugger';
 			config['showLog'] = true;
 			config['trace'] = 'verbose';
 		}
