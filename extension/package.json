@@ -875,6 +875,14 @@
                 "description": "(Experimental) Debug with elevated permissions (on Unix). It requires `integrated` or `external` console modes and is ignored in remote debugging.",
                 "type": "boolean"
               },
+              "outputMode": {
+                "default": "local",
+                "description": "When set to 'remote' captures the target program's stdout and stderr and transfers it to the client via DAP protocol's output events.",
+                "enum": [
+                  "local",
+                  "remote"
+                ]
+              },
               "stdinFrom": {
                 "type": "string",
                 "default": "",

@@ -309,6 +309,8 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	// and send the information to DA using the 'env' property.
 	envFile?: string | string[];
 
+	outputMode?: string;
+
 	stdinFrom?: string;
 	stdoutTo?: string;
 	stderrTo?: string;
