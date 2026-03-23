@@ -135,19 +135,69 @@ export interface FormField {
 	error?: string;
 }
 
+// InteractiveParams facilitates a multi-step, interactive dialogue between the
+// client and server during a Language Server Protocol (LSP) request.
+//
+// It implements a non-standard protocol extension microsoft/language-server-protocol#1164
+// . By embedding this type into standard request parameters (such as
+// [ExecuteCommandParams] or [RenameParams]) and pairing them with dedicated
+// resolution methods (like [Server.ResolveCommand] or other ResolveXXX handlers),
+// standard operations can be transformed into interactive workflows.
+//
+// Standard LSP resolution methods (like "codeAction/resolve") cannot be used
+// for these interactive forms because editors often trigger them eagerly to
+// render previews, which would prematurely present UI forms to the user.
+// The dedicated ResolveXXX pattern ensures the interactive dialogue strictly
+// begins only *after* the user has explicitly indicated intent (for example,
+// by clicking a specific Code Action).
+//
+// The following sequence illustrates the typical handshake, using a code action
+// that resolves to a command as an example:
+//
+//  1. The client requests code actions for the current text selection.
+//  2. The server responds with a code action containing a standard LSP Command
+//     (title, command, and arguments).
+//  3. The client calls [Server.ResolveCommand] with the initial command details
+//     wrapped in an [ExecuteCommandParams] to determine if the execution requires
+//     interactive input.
+//  4. The server responds with an [ExecuteCommandParams]. If user input is
+//     required, the server populates the FormFields array with the required schema.
+//  5. The client observes the non-empty FormFields and presents a corresponding
+//     user interface.
+//  6. The user submits their input, and the client issues another
+//     [Server.ResolveCommand] request, this time populating the FormAnswers array.
+//  7. The server validates the answers. If invalid, it returns a form with error
+//     messages attached to specific FormFields. Steps 5-7 repeat until the server
+//     omits FormFields entirely, indicating the answers are valid and complete.
+//  8. The client calls [Server.ExecuteCommand] with the finalized FormAnswers to
+//     execute the action.
+//
+// The server populates FormFields to define the input schema. If FormFields is
+// omitted or empty, the interactive phase is considered complete and the provided
+// FormAnswers have been fully validated.
+//
+// The server may optionally populate FormAnswers alongside FormFields to preserve
+// previous user input or provide default values for the client to render.
 export interface InteractiveParams {
-	/**
-	 * FormFields defines the questions and validation errors.
-	 * This is a server-to-client field.
-	 */
+	// FormFields defines the questions and validation errors in previous
+	// answers to the same questions.
+	//
+	// This is a server-to-client field. The language server defines these, and
+	// the client uses them to render the form.
+	//
+	// The interactive phase is considered complete when the server returns a
+	// response where this slice is omitted.
 	formFields?: FormField[];
 
-	/**
-	 * FormAnswers contains the values for the form questions.
-	 * When sent by the language server, this acts as preserved/previous input.
-	 * When sent by the client (in a resolve request), this is required when
-	 * formFields are defined.
-	 */
+	// FormAnswers contains the values for the form questions.
+	//
+	// When sent by the language server, this field is optional but recommended
+	// to support editing previous values.
+	//
+	// When sent by the language client as part of the ResolveXXX request, this
+	// field is required. The slice must have the same length as FormFields (one
+	// answer per question), where the answer at index i corresponds to the
+	// field at index i.
 	formAnswers?: any[];
 }
 
@@ -174,11 +224,27 @@ export interface InteractiveExecuteCommandParams extends InteractiveParams {
  */
 const MAX_RETRY = 5;
 
+// ResolveCommand handles the interactive resolution of a command prior to
+// its execution.
+//
+// It processes an [ExecuteCommandParams] to determine if the command requires
+// interactive input, or to validate user-provided answers submitted via the
+// embedded [InteractiveParams].
+//
+// If the command requires user input (e.g., the initial probe) or if the
+// provided answers are invalid, it returns a modified [ExecuteCommandParams]
+// populated with FormFields to prompt the user. If the input is valid and
+// complete, or if the command requires no interaction at all, it returns an
+// [ExecuteCommandParams] with an empty form, signaling the client to proceed
+// with execution.
+//
+// See [InteractiveParams] for the complete multi-step client-server handshake
+// and the architectural reasoning behind dedicated ResolveXXX methods.
 export async function ResolveCommand(
 	goCtx: GoExtensionContext,
 	command: string,
 	args: any[]
-): Promise<{ command: string; args: any[] } | undefined> {
+): Promise<{ command: string; args: any[]; formAnswers?: any[] } | undefined> {
 	// Avoid resolving for frequently triggered commands for performance.
 	if (command === 'gopls.package_symbols') {
 		return { command: command, args: args };
@@ -220,7 +286,7 @@ export async function ResolveCommand(
 
 		param = response as InteractiveExecuteCommandParams;
 
-		// No information needed from the gopls.
+		// "formAnswers" are validated by the language server.
 		if (param.formFields === undefined) {
 			break;
 		}
@@ -245,7 +311,7 @@ export async function ResolveCommand(
 		param.formFields = undefined;
 	}
 
-	return { command: param.command, args: param.arguments ? param.arguments : [] };
+	return { command: param.command, args: param.arguments ? param.arguments : [], formAnswers: param.formAnswers };
 }
 
 /**
@@ -460,7 +526,7 @@ async function promptForField(field: FormField, prevAnswer: any | undefined): Pr
 			if (action.target === 'open') {
 				const uri = await vscode.window.showOpenDialog({
 					canSelectFiles: true,
-					canSelectFolders: false,
+					canSelectFolders: true,
 					canSelectMany: false,
 					openLabel: 'Select',
 					defaultUri: defaultUri,
